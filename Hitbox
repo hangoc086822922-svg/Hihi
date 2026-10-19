@@ -1,0 +1,276 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local localPlayer = Players.LocalPlayer
+
+-- Biến cấu hình ban đầu
+local hitboxEnabled = true
+local hitboxSize = 10
+local hitboxTransparency = 0.5
+local espEnabled = true
+local espColor = Color3.fromRGB(255, 255, 0)
+
+-- Tạo Highlight ESP
+local function createESP(character)
+    if character:FindFirstChild("ESPHighlight") then return end
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "ESPHighlight"
+    highlight.FillColor = espColor
+    highlight.FillTransparency = 0.5
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.OutlineTransparency = 0
+    highlight.Adornee = character
+    highlight.Parent = character
+end
+
+local function removeESP(character)
+    local highlight = character:FindFirstChild("ESPHighlight")
+    if highlight then highlight:Destroy() end
+end
+
+-- Vòng lặp cập nhật ESP & Hitbox
+RunService.RenderStepped:Connect(function()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer then
+            local character = player.Character
+            if character then
+                local rootPart = character:FindFirstChild("HumanoidRootPart")
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                if rootPart and humanoid and humanoid.Health > 0 then
+                    
+                    -- Kiểm tra xem có phải là ĐỊCH không
+                    local isEnemy = true
+                    if player.Team and localPlayer.Team and player.Team == localPlayer.Team then
+                        isEnemy = false -- Cùng Team là đồng đội
+                    end
+
+                    -- Chỉ chỉnh Hitbox thành hình tròn nếu là Địch và tính năng bật
+                    if hitboxEnabled and isEnemy then
+                        rootPart.Shape = Enum.PartType.Ball -- Đổi hình dạng thành hình tròn (hình cầu)
+                        rootPart.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
+                        rootPart.Transparency = hitboxTransparency
+                        rootPart.Color = Color3.fromRGB(255, 0, 0)
+                        rootPart.Material = Enum.Material.Neon
+                        rootPart.CanCollide = false
+                    else
+                        -- Đồng đội hoặc tắt hitbox sẽ trở về hình hộp chữ nhật gốc
+                        rootPart.Shape = Enum.PartType.Block
+                        rootPart.Size = Vector3.new(2, 2, 1)
+                        rootPart.Transparency = 1
+                    end
+                    
+                    if espEnabled then
+                        createESP(character)
+                    else
+                        removeESP(character)
+                    end
+                else
+                    removeESP(character)
+                end
+            end
+        end
+    end
+end)
+
+---------------------------------------------------------
+-- GIAO DIỆN MENU CHO ĐIỆN THOẠI (MOBILE UI)
+---------------------------------------------------------
+
+-- Xóa menu cũ nếu đã từng chạy trước đó
+if game.CoreGui:FindFirstChild("VNMenuMobile") then
+    game.CoreGui.VNMenuMobile:Destroy()
+end
+if localPlayer.PlayerGui:FindFirstChild("VNMenuMobile") then
+    localPlayer.PlayerGui.VNMenuMobile:Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "VNMenuMobile"
+ScreenGui.ResetOnSpawn = false
+
+local success = pcall(function()
+    ScreenGui.Parent = CoreGui
+end)
+if not success then
+    ScreenGui.Parent = localPlayer:WaitForChild("PlayerGui")
+end
+
+-- 1. Nút Tròn Mở/Ẩn Menu
+local OpenBtn = Instance.new("TextButton")
+OpenBtn.Name = "OpenButton"
+OpenBtn.Size = UDim2.new(0, 50, 0, 50)
+OpenBtn.Position = UDim2.new(0.02, 0, 0.2, 0)
+OpenBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+OpenBtn.Text = "VN"
+OpenBtn.TextColor3 = Color3.fromRGB(0, 255, 127)
+OpenBtn.TextSize = 18
+OpenBtn.Font = Enum.Font.GothamBold
+OpenBtn.Active = true
+OpenBtn.Draggable = true
+OpenBtn.Parent = ScreenGui
+
+local OpenCorner = Instance.new("UICorner")
+OpenCorner.CornerRadius = UDim.new(1, 0)
+OpenCorner.Parent = OpenBtn
+
+-- 2. Khung Menu Chính
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "VNMenu"
+MainFrame.Size = UDim2.new(0, 230, 0, 290)
+MainFrame.Position = UDim2.new(0.5, -115, 0.25, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Visible = true
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
+
+-- Tiêu đề Menu
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.BackgroundTransparency = 1
+Title.Text = "VN MENU (MOBILE)"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 15
+Title.Font = Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+-- Ẩn / Hiện Menu khi bấm nút tròn
+OpenBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- 3. Nút Bật/Tắt Hitbox
+local HitboxButton = Instance.new("TextButton")
+HitboxButton.Size = UDim2.new(0.9, 0, 0, 35)
+HitboxButton.Position = UDim2.new(0.05, 0, 0, 40)
+HitboxButton.BackgroundColor3 = Color3.fromRGB(50, 205, 50)
+HitboxButton.Text = "Hitbox: BẬT"
+HitboxButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+HitboxButton.TextSize = 14
+HitboxButton.Font = Enum.Font.GothamBold
+HitboxButton.Parent = MainFrame
+
+local HitboxCorner = Instance.new("UICorner")
+HitboxCorner.CornerRadius = UDim.new(0, 6)
+HitboxCorner.Parent = HitboxButton
+
+HitboxButton.MouseButton1Click:Connect(function()
+    hitboxEnabled = not hitboxEnabled
+    if hitboxEnabled then
+        HitboxButton.Text = "Hitbox: BẬT"
+        HitboxButton.BackgroundColor3 = Color3.fromRGB(50, 205, 50)
+    else
+        HitboxButton.Text = "Hitbox: TẮT"
+        HitboxButton.BackgroundColor3 = Color3.fromRGB(205, 50, 50)
+    end
+end)
+
+-- 4. Nút Bật/Tắt ESP
+local ESPButton = Instance.new("TextButton")
+ESPButton.Size = UDim2.new(0.9, 0, 0, 35)
+ESPButton.Position = UDim2.new(0.05, 0, 0, 80)
+ESPButton.BackgroundColor3 = Color3.fromRGB(50, 205, 50)
+ESPButton.Text = "ESP: BẬT"
+ESPButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ESPButton.TextSize = 14
+ESPButton.Font = Enum.Font.GothamBold
+ESPButton.Parent = MainFrame
+
+local ESPCorner = Instance.new("UICorner")
+ESPCorner.CornerRadius = UDim.new(0, 6)
+ESPCorner.Parent = ESPButton
+
+ESPButton.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    if espEnabled then
+        ESPButton.Text = "ESP: BẬT"
+        ESPButton.BackgroundColor3 = Color3.fromRGB(50, 205, 50)
+    else
+        ESPButton.Text = "ESP: TẮT"
+        ESPButton.BackgroundColor3 = Color3.fromRGB(205, 50, 50)
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player.Character then
+                removeESP(player.Character)
+            end
+        end
+    end
+end)
+
+-- 5. Nhãn Hiển Thị Cỡ Hitbox hiện tại
+local SizeLabel = Instance.new("TextLabel")
+SizeLabel.Size = UDim2.new(0.9, 0, 0, 25)
+SizeLabel.Position = UDim2.new(0.05, 0, 0, 120)
+SizeLabel.BackgroundTransparency = 1
+SizeLabel.Text = "Cỡ Hitbox: 10"
+SizeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+SizeLabel.TextSize = 13
+SizeLabel.Font = Enum.Font.GothamBold
+SizeLabel.Parent = MainFrame
+
+-- 6. Nút Trừ (-) Giảm Cỡ Hitbox
+local SubSizeBtn = Instance.new("TextButton")
+SubSizeBtn.Size = UDim2.new(0.42, 0, 0, 35)
+SubSizeBtn.Position = UDim2.new(0.05, 0, 0, 150)
+SubSizeBtn.BackgroundColor3 = Color3.fromRGB(205, 92, 92)
+SubSizeBtn.Text = "Giảm (-)"
+SubSizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SubSizeBtn.TextSize = 14
+SubSizeBtn.Font = Enum.Font.GothamBold
+SubSizeBtn.Parent = MainFrame
+
+local SubCorner = Instance.new("UICorner")
+SubCorner.CornerRadius = UDim.new(0, 6)
+SubCorner.Parent = SubSizeBtn
+
+SubSizeBtn.MouseButton1Click:Connect(function()
+    if hitboxSize > 2 then
+        hitboxSize = hitboxSize - 2
+        SizeLabel.Text = "Cỡ Hitbox: " .. hitboxSize
+    end
+end)
+
+-- 7. Nút Cộng (+) Tăng Cỡ Hitbox
+local AddSizeBtn = Instance.new("TextButton")
+AddSizeBtn.Size = UDim2.new(0.42, 0, 0, 35)
+AddSizeBtn.Position = UDim2.new(0.53, 0, 0, 150)
+AddSizeBtn.BackgroundColor3 = Color3.fromRGB(0, 122, 255)
+AddSizeBtn.Text = "Tăng (+)"
+AddSizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AddSizeBtn.TextSize = 14
+AddSizeBtn.Font = Enum.Font.GothamBold
+AddSizeBtn.Parent = MainFrame
+
+local AddCorner = Instance.new("UICorner")
+AddCorner.CornerRadius = UDim.new(0, 6)
+AddCorner.Parent = AddSizeBtn
+
+AddSizeBtn.MouseButton1Click:Connect(function()
+    if hitboxSize < 50 then
+        hitboxSize = hitboxSize + 2
+        SizeLabel.Text = "Cỡ Hitbox: " .. hitboxSize
+    end
+end)
+
+-- 8. Nút Đóng/Thu Nhỏ Menu
+local CloseMenuBtn = Instance.new("TextButton")
+CloseMenuBtn.Size = UDim2.new(0.9, 0, 0, 35)
+CloseMenuBtn.Position = UDim2.new(0.05, 0, 0, 195)
+CloseMenuBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+CloseMenuBtn.Text = "Thu Nhỏ Menu"
+CloseMenuBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseMenuBtn.TextSize = 14
+CloseMenuBtn.Font = Enum.Font.GothamBold
+CloseMenuBtn.Parent = MainFrame
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 6)
+CloseCorner.Parent = CloseMenuBtn
+
+CloseMenuBtn.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+end)
